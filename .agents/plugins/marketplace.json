@@ -1,0 +1,27 @@
+{
+  "name": "dsudomoin",
+  "description": "Weeek integration for Codex",
+  "interface": {
+    "displayName": "dsudomoin"
+  },
+  "plugins": [
+    {
+      "name": "weeek",
+      "description": "Weeek task tracker: tasks, comments, attachments",
+      "source": {
+        "source": "local",
+        "path": "./plugins/weeek"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools",
+      "author": {
+        "name": "d.sudomoin",
+        "url": "https://github.com/dsudomoin"
+      },
+      "license": "MIT"
+    }
+  ]
+}

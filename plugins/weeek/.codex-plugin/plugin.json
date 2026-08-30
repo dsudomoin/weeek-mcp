@@ -1,0 +1,34 @@
+{
+  "name": "weeek",
+  "version": "0.1.0",
+  "description": "Weeek task tracker: read and change tasks, comments and attachments",
+  "author": {
+    "name": "d.sudomoin",
+    "url": "https://github.com/dsudomoin"
+  },
+  "homepage": "https://github.com/dsudomoin/weeek-mcp",
+  "repository": "https://github.com/dsudomoin/weeek-mcp",
+  "license": "MIT",
+  "keywords": [
+    "weeek",
+    "tasks",
+    "project-management",
+    "mcp"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Weeek",
+    "shortDescription": "Work with your Weeek tasks in plain language",
+    "longDescription": "Ask about your Weeek workspace the way you would ask a colleague: what is on the board, who is on a task, what was said in its discussion. Then act on it — create and update tasks, move them between columns, complete them, assign people, post comments in markdown, and pull an attachment down to read it. Answers come back written for a conversation rather than as raw API JSON: names instead of ids, markdown instead of HTML, and a sentence telling you how to reach the next page. Your API token is stored in this machine's keychain by a one-line setup command, so it never sits in a configuration file.",
+    "developerName": "d.sudomoin",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/dsudomoin/weeek-mcp",
+    "defaultPrompt": [
+      "What is on my Weeek board right now, and which tasks are assigned to me?"
+    ]
+  }
+}

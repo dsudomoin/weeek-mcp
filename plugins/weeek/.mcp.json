@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "weeek": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@dsudomoin/weeek-mcp@0.1.0"
+      ],
+      "env": {
+        "WEEEK_API_TOKEN": "${user_config.api_token}",
+        "WEEEK_FILE_ROOT": "${user_config.file_root}",
+        "npm_config_fetch_retries": "0"
+      }
+    }
+  }
+}

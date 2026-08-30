@@ -1,0 +1,31 @@
+{
+  "name": "weeek",
+  "displayName": "Weeek",
+  "version": "0.1.0",
+  "description": "Weeek task tracker for Claude Code: tasks, comments, attachments",
+  "author": {
+    "name": "d.sudomoin"
+  },
+  "license": "MIT",
+  "keywords": [
+    "weeek",
+    "tasks",
+    "project-management",
+    "mcp"
+  ],
+  "userConfig": {
+    "api_token": {
+      "type": "string",
+      "title": "Weeek API token",
+      "description": "Personal API token from Weeek workspace settings, API section. Optional: leave it empty if you would rather run `weeek-mcp init`, which asks for the token, checks it with Weeek and keeps it in this machine's keychain instead. Set here, it is stored by Claude Code and wins over anything the wizard saved.",
+      "sensitive": true,
+      "required": false
+    },
+    "file_root": {
+      "type": "string",
+      "title": "Attachment directory",
+      "description": "Absolute path to the one directory the attachment tools may read from and write to. Leave this empty and both stay refused, which is the safe default: uploading reads any path the model names, and the model reads comments other people wrote. Pick a directory nothing is executed from.",
+      "required": false
+    }
+  }
+}
