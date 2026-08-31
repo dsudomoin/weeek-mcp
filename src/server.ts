@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ConfigError, assertSupportedNode, fileRootWarning, loadConfig } from "./config.ts";
+import { ConfigError, assertSupportedNode, loadConfig } from "./config.ts";
 import { WeeekClient } from "./http/client.ts";
 import { WeeekApiError, describeApiError } from "./http/quirks.ts";
 import { serverIdentity } from "./identity.ts";
@@ -50,12 +50,6 @@ async function main(): Promise<void> {
 
   const config = loadConfig(await resolveEnvironment());
 
-  // A root this wide is the operator's decision and is honoured; this is only so that it is a
-  // decision they know they made. Said here at startup, and again by the file tools in their own
-  // answers — stderr from a stdio server is the channel a person is least likely to be reading.
-  const warning = fileRootWarning(config.fileRoot);
-  if (warning !== null) console.error(warning);
-
   const client = new WeeekClient(config);
 
   const server = new McpServer(serverIdentity());
@@ -68,12 +62,7 @@ async function main(): Promise<void> {
     console.error(error);
   };
 
-  registerAllTools(server, {
-    client,
-    directory: new WorkspaceDirectory(client),
-    fileRoot: config.fileRoot,
-    fileRootWarning: warning,
-  });
+  registerAllTools(server, { client, directory: new WorkspaceDirectory(client) });
 
   // Nothing is fetched here: the workspace is loaded by the first tool call that needs it, so a
   // client that starts this server and asks nothing of it costs the API no requests at all.

@@ -58,17 +58,16 @@ test("the marketplace entry and the plugin manifest name the same plugin", () =>
   assert.equal(marketplaceEntry().name, plugin.name);
 });
 
-test("the version in the README's Codex example is the version being published", () => {
-  // The sixth place, and the only one outside a manifest: a reader copies that stanza verbatim, so
-  // a stale version here installs an old server for anyone who follows the README rather than the
-  // plugin. Nothing else checks it — the five manifest copies are machine-read, this one is prose.
+test("the README names no version of this package but the one being published", () => {
+  // A rule rather than a fixture, and it currently matches nothing: the one stanza that pinned a
+  // version was the Codex registration WEEEK_FILE_ROOT existed for, and it went with the root.
+  // What it guarded can come back the moment anyone writes an `npx -y ...@x.y.z` line into the
+  // prose — a reader copies that verbatim, so a stale one installs an old server for everybody who
+  // follows the README rather than the plugin, and nothing else here reads prose.
   const pkg = readJson<{ name: string; version: string }>("package.json");
   const readme = readFileSync(join(REPO_ROOT, "README.md"), "utf8");
 
-  const specs = [...readme.matchAll(/@dsudomoin\/weeek-mcp@(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
-
-  assert.notEqual(specs.length, 0, "the README no longer pins a version anywhere");
-  for (const found of specs) {
+  for (const [, found] of readme.matchAll(/@dsudomoin\/weeek-mcp@(\d+\.\d+\.\d+)/g)) {
     assert.equal(found, pkg.version, `the README still says ${pkg.name}@${found}`);
   }
 });
@@ -76,9 +75,9 @@ test("the version in the README's Codex example is the version being published",
 test("no userConfig option is required, because a missing one registers no server at all", () => {
   // Not a style preference. Claude registers the plugin's MCP server only once every *required*
   // option has a value, and an unset one produces no server, no tools and no error anywhere — a
-  // plugin that lists as installed and enabled and does nothing. Both options here have a second
-  // route (`weeek-mcp init` for the token, refusal-by-default for the attachment directory), so
-  // the server can always start and say what it is missing, which it cannot do if it never runs.
+  // plugin that lists as installed and enabled and does nothing. The one option here has a second
+  // route — `weeek-mcp init` stores the token on the machine — so the server can always start and
+  // say what it is missing, which it cannot do if it never runs.
   const manifest = readJson<{ userConfig: Record<string, { required?: boolean }> }>(
     `${PLUGIN_ROOT}/.claude-plugin/plugin.json`,
   );

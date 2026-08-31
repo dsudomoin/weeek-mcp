@@ -8,7 +8,6 @@
       ],
       "env": {
         "WEEEK_API_TOKEN": "${user_config.api_token}",
-        "WEEEK_FILE_ROOT": "${user_config.file_root}",
         "npm_config_fetch_retries": "0"
       }
     }

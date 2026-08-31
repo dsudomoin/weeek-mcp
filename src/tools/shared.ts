@@ -4,19 +4,10 @@ import type { WeeekClient } from "../http/client.ts";
 import { WeeekApiError, describeApiError } from "../http/quirks.ts";
 import type { WorkspaceDirectory } from "../weeek/directory.ts";
 
-/** Everything a tool is allowed to reach: the API, the names the workspace goes by, and the one
- * directory the attachment tools may touch — null when the operator has named none, which is the
- * default and makes both of those paths refuse. */
+/** Everything a tool is allowed to reach: the API, and the names the workspace goes by. */
 export type ToolContext = {
   client: WeeekClient;
   directory: WorkspaceDirectory;
-  fileRoot: string | null;
-  /**
-   * What to say about a file root wide enough to be worth mentioning, or null when there is
-   * nothing to say. Carried here rather than recomputed because config.ts reads the environment
-   * once, at startup, and that is worth keeping true.
-   */
-  fileRootWarning: string | null;
 };
 
 /**
@@ -54,10 +45,10 @@ export const READ_ONLY_ANNOTATIONS = {
  *
  * destructiveHint is false because none of these destroys anything: creating adds, updating
  * changes named fields, moving relocates, completing is undone by the same tool with
- * completed: false, a person taken off a task can be put back, and posting a comment or attaching
- * a file only ever adds one. weeek_get_attachment is here too, though it only reads from Weeek —
- * it writes a file to this machine, which is a change to its environment and so not read-only, and
- * it destroys nothing because it refuses to replace a file rather than overwriting one.
+ * completed: false, a person taken off a task can be put back, and posting a comment only ever
+ * adds one. weeek_get_attachment is here too, though it only reads from Weeek — it writes a file
+ * to this machine, which is a change to its environment and so not read-only, and it destroys
+ * nothing because it only ever creates a file in a directory made for it.
  * weeek_delete_comment, the one tool in this server that does destroy, declares itself destructive
  * instead — see DESTRUCTIVE_ANNOTATIONS below.
  *
@@ -186,7 +177,7 @@ export { asRecord } from "../http/quirks.ts";
  * Nothing human reads this channel, and `null, 2` spends about a third of the answer on
  * indentation — some 2 700 characters on a default 25-row page and 10 600 on a full one, measured
  * against a typical row. That is more, on a single search, than this server's whole tool set costs
- * to describe, and the tool set is why this project curates 13 tools instead of generating 157.
+ * to describe, and the tool set is why this project curates 12 tools instead of generating 157.
  */
 export function jsonResult(value: unknown): CallToolResult {
   return { content: [{ type: "text", text: JSON.stringify(value) }] };

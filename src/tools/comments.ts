@@ -98,8 +98,7 @@ export function registerCommentWriteTools(server: McpServer, context: ToolContex
       description:
         "Adds a comment to a task. The text is markdown and Weeek keeps it as written — " +
         "newlines, lists, links and code all survive. A comment cannot be edited afterwards: " +
-        "the API offers only create and delete. Files cannot be attached to a comment; attach " +
-        "them to the task with weeek_upload_attachment instead.",
+        "the API offers only create and delete, and no file can be attached to one.",
       inputSchema: z.strictObject({
         taskId: weeekId().describe("The task id."),
         markdown: z.string().min(1).describe("The comment text, in markdown."),
@@ -125,10 +124,9 @@ export function registerCommentWriteTools(server: McpServer, context: ToolContex
         const created = answeredComment(payload);
         // Projected, not echoed. The body Weeek sends back carries the markdown the model wrote a
         // moment ago, plus authorId, updatedAt and its own copy of the text — spending a long
-        // comment twice to tell the model what it already knows. The upload answer drops a
-        // 180-character url for exactly this reason, and a comment can be far longer than a url.
-        // What is left is what a reply or a delete actually needs. `added` is on both answers so
-        // that a flag learned from one call is not undefined on the next.
+        // comment twice to tell the model what it already knows. What is left is what a reply or a
+        // delete actually needs. `added` is on both answers so that a flag learned from one call is
+        // not undefined on the next.
         return jsonResult(
           created === null
             ? {

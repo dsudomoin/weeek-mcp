@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerAttachmentTools } from "./attachments.ts";
+import { registerGetAttachmentTool } from "./attachments.ts";
 import { registerCommentWriteTools, registerListCommentsTool } from "./comments.ts";
 import { registerContextTool } from "./context.ts";
 import { registerGetTaskTool } from "./get-task.ts";
@@ -8,7 +8,7 @@ import type { ToolContext } from "./shared.ts";
 import { registerTaskMutationTools } from "./task-mutations.ts";
 
 /**
- * The whole tool set in one readable list — the four that only read first, then the nine that
+ * The whole tool set in one readable list — the four that only read first, then the eight that
  * change something. weeek_get_attachment sits with the second group: it reads from Weeek, but it
  * writes a file to this machine, and its annotations say so.
  *
@@ -29,7 +29,6 @@ export const TOOL_NAMES = [
   "weeek_set_task_people",
   "weeek_add_comment",
   "weeek_get_attachment",
-  "weeek_upload_attachment",
   "weeek_delete_comment",
 ] as const;
 
@@ -48,5 +47,5 @@ export function registerAllTools(server: McpServer, context: ToolContext): void 
   registerListCommentsTool(server, context);
   registerCommentWriteTools(server, context);
   registerTaskMutationTools(server, context);
-  registerAttachmentTools(server, context);
+  registerGetAttachmentTool(server, context);
 }

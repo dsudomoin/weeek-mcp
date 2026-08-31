@@ -79,18 +79,9 @@ export function workspaceResponses(): Record<string, unknown> {
 export function toolContext(
   responses: Record<string, unknown> = {},
   calls: Call[] = [],
-  // Null by default because that is the server's default, so a test that does not think about the
-  // file root gets the same refusals a user with no WEEEK_FILE_ROOT gets.
-  fileRoot: string | null = null,
-  warning: string | null = null,
 ): ToolContext {
   const client = stubClient({ ...workspaceResponses(), ...responses }, calls);
-  return {
-    client: client as never,
-    directory: new WorkspaceDirectory(client as never),
-    fileRoot,
-    fileRootWarning: warning,
-  };
+  return { client: client as never, directory: new WorkspaceDirectory(client as never) };
 }
 
 export type Captured = { handler: Handler; name: string; config: ToolConfig };

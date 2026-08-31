@@ -35,7 +35,6 @@ test("OPS exposes exactly the keys later modules import", () => {
     "searchTasks",
     "unCompleteTask",
     "updateTask",
-    "uploadAttachment",
   ]);
 });
 

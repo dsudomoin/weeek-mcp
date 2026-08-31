@@ -15,12 +15,7 @@ import { TOOL_NAMES, registerAllTools } from "./index.ts";
  */
 async function listTools(): Promise<Tool[]> {
   const server = new McpServer({ name: "weeek-mcp", version: "0.1.0" });
-  registerAllTools(server, {
-    client: {} as never,
-    directory: {} as never,
-    fileRoot: null,
-    fileRootWarning: null,
-  });
+  registerAllTools(server, { client: {} as never, directory: {} as never });
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "1.0.0" });
@@ -31,13 +26,13 @@ async function listTools(): Promise<Tool[]> {
   return tools;
 }
 
-test("the server registers exactly the thirteen tools TOOL_NAMES declares", async () => {
+test("the server registers exactly the twelve tools TOOL_NAMES declares", async () => {
   // The two sides are independent: each tool names itself in its own register call, and nothing
   // in the source reads TOOL_NAMES back. So this catches a tool added, renamed or dropped without
   // the list following it — the drift a list nobody checks always ends in.
   const names = (await listTools()).map((tool) => tool.name).sort();
   assert.deepEqual(names, [...TOOL_NAMES].sort());
-  assert.equal(TOOL_NAMES.length, 13);
+  assert.equal(TOOL_NAMES.length, 12);
 });
 
 test("read tools declare readOnlyHint and the deletion declares destructiveHint", async () => {
@@ -53,12 +48,12 @@ test("the tool list stays cheap in context", async () => {
   // Two bounds, because they defend two different things.
   //
   // The loose one defends the premise. A tool per API operation gave 157 tools and some 126 000
-  // characters — about 36 000 tokens on every single request, against 4 000 for these thirteen.
-  // It fires the moment someone generates the other 144 back, and it never fires because a
+  // characters — about 36 000 tokens on every single request, against 3 700 for these twelve.
+  // It fires the moment someone generates the other 145 back, and it never fires because a
   // description grew a sentence, so nobody ever has a reason to switch it off.
   assert.ok(payload.length < 30_000, `tools/list grew to ${payload.length} characters`);
 
-  // The tight one defends the number, which is this project's whole identity. At 14 395 characters
+  // The tight one defends the number, which is this project's whole identity. At 13 029 characters
   // today it leaves real room, and it catches the gradual creep that 30 000 would wave through at
   // more than double what the tool set costs now.
   assert.ok(payload.length < 18_000, `tools/list crept up to ${payload.length} characters`);
@@ -153,7 +148,7 @@ test("every tool refuses an argument it never declared", async () => {
   // arguments at all. Measured: doing that to one tool turns exactly this assertion red and
   // nothing else.
   const tools = await listTools();
-  assert.equal(tools.length, 13);
+  assert.equal(tools.length, 12);
 
   for (const tool of tools) {
     assert.equal(

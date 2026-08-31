@@ -302,9 +302,9 @@ export function registerTaskMutationTools(server: McpServer, context: ToolContex
         });
 
         const task = answeredTask(payload);
-        // `created` is on both answers, not only the degraded one. The rule the comment and
-        // attachment tools already follow: a flag a model learns from one call and finds undefined
-        // on the next reads as a failure exactly when everything went right.
+        // `created` is on both answers, not only the degraded one. The rule the comment tool
+        // already follows: a flag a model learns from one call and finds undefined on the next
+        // reads as a failure exactly when everything went right.
         return jsonResult(
           task === null
             ? {
@@ -501,8 +501,8 @@ export function registerTaskMutationTools(server: McpServer, context: ToolContex
         const { applied, failure } = await applyInOrder(steps);
         // `changed` rather than `assigned`, because this tool also removes people and also runs
         // on watchers alone: `assigned: true` after {removeAssignees: [...]} claims something the
-        // call did not do. The precise verbs — created, updated, moved, added, deleted, uploaded —
-        // stay where they are true. `applied` says which calls went out, which is a different
+        // call did not do. The precise verbs — created, updated, moved, added, deleted — stay
+        // where they are true. `applied` says which calls went out, which is a different
         // question and the one that matters when only some of them did.
         return failure ?? jsonResult({ taskId, applied, changed: true });
       }),

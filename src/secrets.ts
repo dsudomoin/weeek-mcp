@@ -52,9 +52,9 @@ export type SaveOutcome = {
  * {@link saveToken} names the store it used in its answer — the user reads where the token went
  * rather than the word "saved".
  *
- * `platform` and `env` are parameters for the reason `isFilesystemRoot` takes a path flavour: an
- * unrun branch of a platform check is a claim, not a check, and this way secrets.test.ts drives
- * every branch from whichever machine it happens to be on.
+ * `platform` and `env` are parameters rather than reads of `process`: an unrun branch of a
+ * platform check is a claim, not a check, and this way secrets.test.ts drives every branch from
+ * whichever machine it happens to be on.
  */
 export function keychainChoice(
   platform: NodeJS.Platform = process.platform,

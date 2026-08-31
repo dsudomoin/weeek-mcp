@@ -225,8 +225,7 @@ test("the comment that was created comes back with the task it was left on", asy
 
 test("the text the model just wrote is not read back to it", async () => {
   // Weeek echoes the whole comment, markdown included. Returning that spends a long comment twice
-  // to tell the model what it supplied a moment earlier — the same waste the upload answer drops a
-  // 180-character url to avoid, and a comment can be far longer than a url.
+  // to tell the model what it supplied a moment earlier, and a comment can be very long.
   const payload = payloadOf(
     await addComment({
       comment: { ...comment(9, null, "u-me", "2026-08-22T12:00:00Z"), markdown: MARKDOWN },

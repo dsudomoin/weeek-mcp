@@ -37,6 +37,5 @@ export const OPS = {
   listComments: op("GET", "/tm/tasks/{taskId}/comments"),
   createComment: op("POST", "/tm/tasks/{taskId}/comments"),
   deleteComment: op("DELETE", "/tm/tasks/{taskId}/comments/{commentId}"),
-  uploadAttachment: op("POST", "/tm/tasks/{task_id}/attachments"),
   getAttachment: op("GET", "/ws/attachments/{file_id}"),
 } as const;

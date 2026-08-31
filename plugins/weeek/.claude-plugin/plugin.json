@@ -20,12 +20,6 @@
       "description": "Personal API token from Weeek workspace settings, API section. Optional: leave it empty if you would rather run `weeek-mcp init`, which asks for the token, checks it with Weeek and keeps it in this machine's keychain instead. Set here, it is stored by Claude Code and wins over anything the wizard saved.",
       "sensitive": true,
       "required": false
-    },
-    "file_root": {
-      "type": "string",
-      "title": "Attachment directory",
-      "description": "Absolute path to the one directory the attachment tools may read and write. Empty means both refuse every path, which is the safe default. `weeek-mcp init` sets it.",
-      "required": false
     }
   }
 }
