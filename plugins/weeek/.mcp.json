@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@dsudomoin/weeek-mcp@0.2.0"
+        "@dsudomoin/weeek-mcp@0.3.0"
       ],
       "env": {
         "WEEEK_API_TOKEN": "${user_config.api_token}",

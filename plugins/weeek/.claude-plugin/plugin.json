@@ -1,7 +1,7 @@
 {
   "name": "weeek",
   "displayName": "Weeek",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Weeek task tracker for Claude Code: tasks, comments, attachments",
   "author": {
     "name": "d.sudomoin"

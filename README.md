@@ -89,7 +89,7 @@ Eight that change something:
 Answers are shaped for reading, not raw API JSON: names instead of ids, markdown instead of HTML,
 and a sentence saying how to fetch the next page.
 
-**Upgrading from 0.1.0:** `weeek_upload_attachment` is gone, and with it `WEEEK_FILE_ROOT` and
+**Upgrading from 0.1.0 or 0.2.0:** `weeek_upload_attachment` is gone, and with it `WEEEK_FILE_ROOT` and
 `weeek_get_attachment`'s `saveTo` argument. Nothing here uploads a file any more, and nothing here
 writes to a path you name — attach files in Weeek itself. Downloading is unchanged apart from
 where the file lands, and it now needs no configuration at all.
