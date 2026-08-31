@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
-import { ConfigError } from "../config.ts";
+import { ConfigError, endpoint } from "../config.ts";
 import { WeeekClient } from "../http/client.ts";
 import { WeeekApiError, describeApiError, asRecord } from "../http/quirks.ts";
 import { readStoredToken, saveToken } from "../secrets.ts";
@@ -122,6 +122,42 @@ async function readLine(prompt: string): Promise<string> {
   }
 }
 
+/**
+ * The one request the wizard makes: proves the token works, and says whose it is.
+ *
+ * GET, and the cheapest one there is. It runs before anything is stored, because a token saved and
+ * then found to be wrong is worse than no token — the failure surfaces later, inside a tool call,
+ * where it looks like a bug in the server rather than a typo in a setup step.
+ *
+ * The endpoint comes from the environment, exactly as the server's does. It used to be written in
+ * here, which meant that on a self-hosted or proxied Weeek the wizard checked the wrong host and
+ * refused a token that was perfectly good — an inconsistency inside one package.
+ *
+ * Exported so this can be tested against a real HTTP server rather than reasoned about: the wizard
+ * around it needs a terminal, and would be untestable end to end. `client` is a seam for the same
+ * reason WeeekClient itself takes a sleep: the client retries a request it could not send four
+ * times with backoff, which is right for a person waiting at a prompt and four wasted seconds in a
+ * suite.
+ */
+export async function checkToken(
+  token: string,
+  env: NodeJS.ProcessEnv = process.env,
+  client: Pick<WeeekClient, "request"> = new WeeekClient({ token, ...endpoint(env) }),
+): Promise<string | null> {
+  try {
+    return nameFromProfile(await client.request(OPS.getProfile));
+  } catch (error) {
+    if (error instanceof WeeekApiError) {
+      throw new ConfigError(
+        `Weeek rejected that token, so nothing was stored.\n${describeApiError(error)}`,
+      );
+    }
+    throw new ConfigError(
+      `Could not reach Weeek to check the token, so nothing was stored. ${reasonOf(error)}`,
+    );
+  }
+}
+
 /** The name Weeek answers with, so the wizard can say who was authenticated rather than "ok". */
 function nameFromProfile(payload: unknown): string | null {
   const user = asRecord(asRecord(payload)?.["user"]);
@@ -178,27 +214,7 @@ async function configureToken(): Promise<void> {
 
   say("Checking it with Weeek...");
 
-  // The token is checked before it is kept, and this is the only request the wizard makes. GET,
-  // and the cheapest one there is: it proves the token works and says whose it is.
-  let profile: unknown;
-  try {
-    profile = await new WeeekClient({
-      token,
-      baseUrl: "https://api.weeek.net/public/v1",
-      timeoutMs: 30_000,
-    }).request(OPS.getProfile);
-  } catch (error) {
-    if (error instanceof WeeekApiError) {
-      throw new ConfigError(
-        `Weeek rejected that token, so nothing was stored.\n${describeApiError(error)}`,
-      );
-    }
-    throw new ConfigError(
-      `Could not reach Weeek to check the token, so nothing was stored. ${reasonOf(error)}`,
-    );
-  }
-
-  const who = nameFromProfile(profile);
+  const who = await checkToken(token);
   say(who === null ? "Accepted." : `Accepted — signed in as ${who}.`);
 
   const outcome = await saveToken(token);

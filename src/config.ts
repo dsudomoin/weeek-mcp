@@ -203,6 +203,25 @@ function realpathOrSelf(path: string): string {
   }
 }
 
+/**
+ * Where to talk to Weeek and for how long — everything the HTTP client needs except the token.
+ *
+ * Split out of loadConfig because the wizard needs exactly this and none of the rest. It has the
+ * token in its hand rather than in the environment, and calling loadConfig for the two remaining
+ * values would drag WEEEK_FILE_ROOT in with them: a root that is set and unusable makes loadConfig
+ * throw, which would mean `weeek-mcp init` refusing to run for precisely the person running it to
+ * fix that root.
+ *
+ * One function rather than two copies so that a self-hosted or proxied endpoint is honoured in
+ * both. It was not, and the wizard's hardcoded address made a token uncheckable on such a machine.
+ */
+export function endpoint(env: NodeJS.ProcessEnv = process.env): Omit<WeeekConfig, "token"> {
+  return {
+    baseUrl: (env["WEEEK_BASE_URL"]?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, ""),
+    timeoutMs: positiveInteger(env["WEEEK_TIMEOUT_MS"]) ?? DEFAULT_TIMEOUT_MS,
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const token = env["WEEEK_API_TOKEN"]?.trim();
   if (!token) {
@@ -214,12 +233,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     );
   }
 
-  return {
-    token,
-    baseUrl: (env["WEEEK_BASE_URL"]?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, ""),
-    timeoutMs: positiveInteger(env["WEEEK_TIMEOUT_MS"]) ?? DEFAULT_TIMEOUT_MS,
-    fileRoot: fileRoot(env),
-  };
+  return { token, ...endpoint(env), fileRoot: fileRoot(env) };
 }
 
 function positiveInteger(value: string | undefined): number | undefined {
