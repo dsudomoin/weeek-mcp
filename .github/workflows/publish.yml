@@ -1,0 +1,86 @@
+name: publish
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # The same gates an ordinary commit faces, run against the tagged tree. A release that cannot
+  # pass its own tests must not reach the registry, and reusing the workflow rather than copying
+  # its steps is what stops the release path quietly becoming the weaker of the two.
+  verify:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      # The whole of the credential. npm exchanges this short-lived OIDC token for a publish grant,
+      # having checked the claims in it against the trusted publisher configured on npmjs.com —
+      # this repository, this file's name. Nothing is stored in a repository secret, so there is no
+      # token to leak, expire, or rotate.
+      #
+      # It is granted to this job and not to `verify`, which runs the test suite: the tests are
+      # ours, but there is no reason to run any test code in a job that can mint a publish token.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          # setup-node's own OIDC guidance turns the cache off here, and the reason is this job's
+          # permissions: it can mint a publish credential, so it restores nothing that a workflow
+          # without that power could have written into the cache.
+          package-manager-cache: false
+
+      - name: npm must be new enough to authenticate by OIDC
+        run: |
+          # Trusted publishing arrived in npm 11.5.1. An older client does not fail by saying so —
+          # it looks for a token, finds none, and reports a missing credential, which sends you
+          # looking for a secret that was never supposed to exist. Node 24 currently bundles npm
+          # 11.19.0; this is here for the day a runner image ships something older.
+          need=11.5.1
+          have="$(npm --version)"
+          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n1)" != "$need" ]; then
+            echo "::error::npm $have cannot use trusted publishing; $need or newer is required"
+            exit 1
+          fi
+          echo "npm $have satisfies the $need trusted publishing needs"
+
+      - name: the tag and package.json must name the same version
+        env:
+          # Through the environment rather than interpolated into the script, so the ref cannot be
+          # read as shell.
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Six files carry the release version and packaging.test.ts holds them to each other. The
+          # tag is a seventh source of truth and nothing else looks at it: tag v0.3.0 at a tree
+          # that still says 0.2.0 and npm republishes 0.2.0 — or refuses, naming a version nobody
+          # asked for. Either way the failure is about the wrong thing, so catch it here.
+          version="$(node -p 'require("./package.json").version')"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::tag $TAG does not match package.json, which says $version (expected v$version)"
+            exit 1
+          fi
+          echo "tag $TAG matches package.json"
+
+      - run: npm ci
+
+      # `prepack` runs `npm run build`, so the bundle is made here from the tagged sources rather
+      # than carried over from another job.
+      #
+      # --access public: the package is scoped, and a scoped package defaults to private. Its
+      # publishConfig says the same thing, and both stay — one of them is enough only until
+      # somebody edits the other.
+      # --provenance: signs the build's origin. Trusted publishing is documented as doing this on
+      # its own, but it has been reported not to without the flag, and asking twice costs nothing.
+      - run: npm publish --provenance --access public

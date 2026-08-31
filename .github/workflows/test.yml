@@ -1,0 +1,64 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Called by publish.yml so a release is held to exactly these gates rather than to a copy of
+  # them that is free to drift. Only the calling workflow may publish — see the note there.
+  workflow_call:
+
+# A push that has already been replaced has nothing left to say. Tags are unaffected: the group is
+# keyed on the ref and a tag ref is pushed once, so no release run can be cancelled by a later one.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          # Not the 22.18 floor `engines` declares, and the gap is real rather than caution. The
+          # suite runs the TypeScript sources directly, and two things in it need a newer Node than
+          # the server itself does:
+          #
+          #   - `AbortSignal.timeout` does not hold the event loop open before Node 24. The client
+          #     builds one per attempt (src/http/client.ts), and in the timeout test the stubbed
+          #     fetch and sleep leave that timer as the only thing pending — so on 22.x and 23.x
+          #     the loop drains, the runner reports "Promise resolution is still pending", and ten
+          #     tests are cancelled by their parent. Measured: 22.18.0, 22.23.2 and 23.0.0 all exit
+          #     1; 24.0.0 is the first that does not. The shipped server is unaffected, because its
+          #     stdio transport keeps the loop alive on any version.
+          #   - Node 24.0.0 still prints the type-stripping ExperimentalWarning, which lands in the
+          #     stderr that src/server.test.ts matches against. 318/318 pass from 24.20.0 and on 26.
+          #
+          # So: the 24 line, which resolves to its latest patch and never to 24.0.0. It is also
+          # what npm's own trusted-publishing guidance recommends, which keeps this job and the
+          # publish job on one version.
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run check
+
+      # Before `npm test`, not after. packaging.test.ts asserts that the file `bin` points at
+      # exists and that the committed THIRD-PARTY-NOTICES.md is what the current sources build —
+      # and dist/ is gitignored, so on a fresh checkout the suite fails without this step.
+      - run: npm run build
+
+      # Needs no Weeek token and reaches no network: the HTTP client takes its fetch by injection
+      # and every test supplies a stub, and secrets.test.ts asserts up front that this platform
+      # cannot reach a keychain before it writes anything. Verified on a bare Linux container with
+      # no WEEEK_* variable set at all.
+      - run: npm test

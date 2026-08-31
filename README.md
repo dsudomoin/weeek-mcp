@@ -121,8 +121,48 @@ npm run check   # tsc --noEmit
 npm run build   # esbuild → dist/server.mjs, the file npm publishes
 ```
 
+The server runs on Node 22.18, but the tests need **Node 24 or newer** and CI uses it. Two of them
+depend on runtime behaviour that arrived in 24: `AbortSignal.timeout` did not hold the event loop
+open before it, which strands the client's timeout test, and 24.0.0 still printed the type-stripping
+warning that `src/server.test.ts` reads stderr for. On Node 22 the suite exits 1 with ten tests
+cancelled — a harness limit, not a defect in the server, which its stdio loop keeps alive anyway.
+
 `src/generated/weeek-openapi.ts` is a committed snapshot of Weeek's OpenAPI spec; refresh it with
 `npm run update:openapi`, which downloads and executes code from their docs site.
+
+## Releasing
+
+Releases are cut by CI. Pushing a tag is the whole of it — nothing is published from a laptop, and
+there is no npm token anywhere: GitHub Actions proves its identity to npm over OIDC, and npm checks
+that against a trusted publisher pinned to this repository and to `.github/workflows/publish.yml`.
+
+The version lives in six files that have to agree, and `npm test` is what holds them together:
+
+- `package.json`
+- `.claude-plugin/marketplace.json`
+- `plugins/weeek/.claude-plugin/plugin.json`
+- `plugins/weeek/.codex-plugin/plugin.json`
+- `plugins/weeek/.mcp.json` — the exact version each client launches through `npx`
+- `plugins/weeek/.codex-plugin/mcp.json` — the same, for Codex
+
+So, to release `0.3.0`:
+
+```bash
+# Bump all six by hand first. `npm version` will not do it: it knows about package.json and
+# the lockfile and nothing else, and the four it misses are the ones users actually install from.
+npm install          # refreshes package-lock.json to match
+npm run build        # THIRD-PARTY-NOTICES.md is committed, and a test compares it to this
+npm test             # refuses if any of the six disagrees
+
+git commit -am "chore: release 0.3.0"
+git tag v0.3.0       # the tag must match package.json, and CI checks that before publishing
+git push origin main --follow-tags
+```
+
+The tag is what starts it. CI then runs the same checks a commit gets, and publishes only if they
+pass — so a release cannot skip the tests that a pull request could not. Watch it under the
+repository's Actions tab; if it fails after the tag is pushed, fix the cause, delete and re-push
+the tag, or re-run the failed run from the Actions UI once the fix is tagged.
 
 ## Licence
 
