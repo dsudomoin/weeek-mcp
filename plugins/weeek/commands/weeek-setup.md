@@ -2,12 +2,12 @@
 description: Store a Weeek API token on this machine for the Weeek MCP server
 ---
 
-The user wants to give the Weeek MCP server a token without leaving it in a
+The user wants to set the Weeek MCP server up without leaving a token in a
 configuration file.
 
-The server needs one thing: a Weeek API token. It stores it in the operating
-system keychain, so all you have to do is walk the user through running the
-wizard.
+The server needs two things: a Weeek API token, and — only if they want the
+attachment tools — one directory those tools may read and write. One wizard
+asks for both, so all you have to do is walk the user through running it.
 
 **Do not ask the user for their token, and do not run the wizard yourself.** It
 reads the token from the terminal without echoing it, which only works when the
@@ -39,11 +39,25 @@ Explain what will happen, so nothing is a surprise:
    Credential Manager, the Secret Service, or a file readable only by them when
    the machine has no usable keychain. Ask them to read that line back: it is
    the difference between a token that survives a reboot and one that does not.
+5. It lists which clients on the machine launch this server, and asks for the
+   one directory the attachment tools may touch. Pressing Enter leaves both
+   tools refusing every path, which is the right answer for anyone not planning
+   to move files. It writes the answer into those clients' own configuration and
+   nowhere else — the server has no settings file and must not get one.
+6. It says to restart the client. That part is not optional: both the token and
+   the directory are read once, when the server starts.
 
 Tokens are created in Weeek under **Settings → API**.
 
-Once they say it finished, verify it by calling `weeek_context`. It should
-return their name, the workspace and its projects. If it fails:
+If they ask you which directory to name, help: it should be one that holds
+nothing private and that nothing is executed from — uploading can read any file
+inside it, and the paths come from you, reading comments other people wrote. A
+fresh directory such as `~/weeek-files` is the usual answer. Their home
+directory is accepted and warned about; a filesystem root is refused.
+
+Once they say it finished, and once the client has been restarted, verify it by
+calling `weeek_context`. It should return their name, the workspace and its
+projects. If it fails:
 
 - **"WEEEK_API_TOKEN is not set and no token is stored"** means the wizard did
   not complete, or it ran against a different installation than the one the MCP

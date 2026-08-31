@@ -12,6 +12,14 @@ import assert from "node:assert/strict";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const PLUGIN_ROOT = "plugins/weeek";
+/**
+ * Two server declarations, one per client, and the split is deliberate rather than duplication.
+ * Claude substitutes `${user_config.*}` into a plugin's env; Codex does not, and passes the text
+ * through as it stands — so a shared file gives Codex a literal `${user_config.api_token}`, which
+ * `loadConfig` accepts as a token and every call then answers 401 with the keychain never asked.
+ */
+const CLAUDE_SERVERS = `${PLUGIN_ROOT}/.mcp.json`;
+const CODEX_SERVERS = `${PLUGIN_ROOT}/.codex-plugin/mcp.json`;
 /** The one file `npm run build` generates that is committed, and the only one worth diffing. */
 const NOTICES = "THIRD-PARTY-NOTICES.md";
 
@@ -29,17 +37,15 @@ function marketplaceEntry(): { name: string; version: string } {
   return entry;
 }
 
-/** The npm spec the plugin launches, e.g. `@dsudomoin/weeek-mcp@0.1.0`. */
-function launchedSpec(): string {
-  const mcp = readJson<{ mcpServers: { weeek: { command: string; args: string[] } } }>(
-    `${PLUGIN_ROOT}/.mcp.json`,
-  );
+/** The npm spec one of those files launches, e.g. `@dsudomoin/weeek-mcp@0.2.0`. */
+function launchedSpec(servers: string): string {
+  const mcp = readJson<{ mcpServers: { weeek: { command: string; args: string[] } } }>(servers);
 
   assert.equal(mcp.mcpServers.weeek.command, "npx");
   const [flag, spec, ...rest] = mcp.mcpServers.weeek.args;
   assert.equal(flag, "-y", "npx must not stop to ask whether to install");
   assert.deepEqual(rest, [], "the server takes no arguments beyond the package spec");
-  assert.ok(spec !== undefined, "the weeek server is declared with no package to run");
+  assert.ok(spec !== undefined, `${servers} declares the weeek server with no package to run`);
   return spec;
 }
 
@@ -84,31 +90,67 @@ test("no userConfig option is required, because a missing one registers no serve
   assert.deepEqual(required, [], `these would stop the server being registered: ${required.join(", ")}`);
 });
 
-test("the release version is one value, in all five places that carry it", () => {
-  // Five, since the server started being fetched from npm rather than run out of the plugin. The
-  // last of them is the one that bites: the plugin launches an exact version through npx, so a
-  // package published as 0.2.0 while .mcp.json still says 0.1.0 installs the old server for every
-  // user, silently and forever. Claude also only offers an update when the plugin's own version
-  // moves, so a package.json bumped alone reaches nobody who already installed it.
-  const pkg = readJson<{ version: string }>("package.json");
+test("every user_config reference in .mcp.json names an option the manifest declares", () => {
+  // Claude does not ignore a reference to an option that is not declared: the substitution throws
+  // ("Plugin option X isn't set"), and the server never registers. A declared option that is simply
+  // unset is the safe case — it resolves to the empty string, which this server reads as absent —
+  // so the whole hazard is a name that does not match, which nothing else here would catch.
+  const manifest = readJson<{ userConfig: Record<string, unknown> }>(
+    `${PLUGIN_ROOT}/.claude-plugin/plugin.json`,
+  );
+  const mcp = readFileSync(join(REPO_ROOT, PLUGIN_ROOT, ".mcp.json"), "utf8");
+
+  for (const [, option] of mcp.matchAll(/\$\{user_config\.([^}]+)\}/g)) {
+    assert.ok(option !== undefined && option in manifest.userConfig, `no such option: ${option}`);
+  }
+});
+
+test("the release version is one value, in all six places that carry it", () => {
+  // Six, since Codex needed a server file of its own. Two of them are the ones that bite: each
+  // plugin launches an exact version through npx, so a package published as 0.2.0 while a server
+  // file still says 0.1.0 installs the old server for every user of that client, silently and
+  // forever. Claude also only offers an update when the plugin's own version moves, so a
+  // package.json bumped alone reaches nobody who already installed it.
+  const pkg = readJson<{ name: string; version: string }>("package.json");
   const claude = readJson<{ version: string }>(`${PLUGIN_ROOT}/.claude-plugin/plugin.json`);
   const codex = readJson<{ version: string }>(`${PLUGIN_ROOT}/.codex-plugin/plugin.json`);
 
   assert.equal(claude.version, pkg.version, "the Claude plugin manifest is out of step");
   assert.equal(codex.version, pkg.version, "the Codex plugin manifest is out of step");
   assert.equal(marketplaceEntry().version, pkg.version, "the marketplace entry is out of step");
-  assert.equal(launchedSpec(), `${readJson<{ name: string }>("package.json").name}@${pkg.version}`);
+  for (const servers of [CLAUDE_SERVERS, CODEX_SERVERS]) {
+    assert.equal(launchedSpec(servers), `${pkg.name}@${pkg.version}`, `${servers} is out of step`);
+  }
 });
 
-test("the plugin launches the published package by an exact version, not a range", () => {
+test("each plugin launches the published package by an exact version, not a range", () => {
   // A range costs a round trip to the registry on every single server start — measured at 280 to
   // 520 ms — because npx has to fetch the packument to learn what it resolves to. It also takes
   // away the user's ability to stay on a version that works when a new one does not.
-  const spec = launchedSpec();
-  const at = spec.lastIndexOf("@");
+  for (const servers of [CLAUDE_SERVERS, CODEX_SERVERS]) {
+    const spec = launchedSpec(servers);
+    const at = spec.lastIndexOf("@");
 
-  assert.ok(at > 0, `${spec} names no version`);
-  assert.match(spec.slice(at + 1), /^\d+\.\d+\.\d+$/, `${spec} is not an exact version`);
+    assert.ok(at > 0, `${spec} names no version`);
+    assert.match(spec.slice(at + 1), /^\d+\.\d+\.\d+$/, `${spec} is not an exact version`);
+  }
+});
+
+test("the Codex server file carries no user_config placeholder, because Codex has no such thing", () => {
+  // The defect this file exists to prevent, and it was measured rather than reasoned: with the
+  // shared file, `codex mcp get weeek --json` after `codex plugin add` reported
+  // WEEEK_API_TOKEN="${user_config.api_token}" verbatim. That is a *non-empty* string, so
+  // loadConfig takes it for a token, never asks the keychain, and every call comes back 401 —
+  // a server that looks alive and fails on first use, which is worse than refusing to start.
+  // The Codex manifest points here rather than at the shared file precisely so this stays true.
+  const codexPlugin = readJson<{ mcpServers: string }>(`${PLUGIN_ROOT}/.codex-plugin/plugin.json`);
+  assert.equal(codexPlugin.mcpServers, `./${CODEX_SERVERS.slice(PLUGIN_ROOT.length + 1)}`);
+
+  const servers = readFileSync(join(REPO_ROOT, CODEX_SERVERS), "utf8");
+  assert.doesNotMatch(servers, /\$\{/, "Codex substitutes nothing: this would be passed through");
+  // And with no token in that environment at all, the keychain is what answers — the only route
+  // Codex has, since a Codex plugin cannot ask its user for anything.
+  assert.doesNotMatch(servers, /WEEEK_API_TOKEN/);
 });
 
 test("a registry that cannot be reached fails in a second rather than in seventy", () => {
@@ -116,11 +158,11 @@ test("a registry that cannot be reached fails in a second rather than in seventy
   // then failing, which blows through every client's startup timeout and takes the whole session's
   // patience with it. With retries off it is 194 ms and an error the user can read. This is the
   // one setting standing between "no network" and "the client hangs".
-  const mcp = readJson<{ mcpServers: { weeek: { env: Record<string, string> } } }>(
-    `${PLUGIN_ROOT}/.mcp.json`,
-  );
+  for (const servers of [CLAUDE_SERVERS, CODEX_SERVERS]) {
+    const mcp = readJson<{ mcpServers: { weeek: { env: Record<string, string> } } }>(servers);
 
-  assert.equal(mcp.mcpServers.weeek.env["npm_config_fetch_retries"], "0");
+    assert.equal(mcp.mcpServers.weeek.env["npm_config_fetch_retries"], "0", `${servers} hangs`);
+  }
 });
 
 test("the package publishes the licence texts for the code it redistributes", () => {

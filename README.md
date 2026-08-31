@@ -25,20 +25,26 @@ codex plugin marketplace add dsudomoin/weeek-mcp
 codex plugin add weeek@dsudomoin
 ```
 
-Or register it by hand in `~/.codex/config.toml`:
+That is all of it, if tasks and comments are what you want. Under Codex the token comes from this
+machine's keychain and from nowhere else: a Codex plugin cannot ask you for a setting, so there is
+no field to paste a token into and `weeek-mcp init` below is the way to supply one. That is how
+Codex works rather than something missing here.
 
-```toml
-[mcp_servers.weeek]
-command = "npx"
-args = ["-y", "@dsudomoin/weeek-mcp@0.1.0"]
+The attachment tools take one more step, and it is a second step rather than an alternative first
+one. They need a directory, and a Codex plugin has nowhere to keep one — so you register the
+server yourself, and that registration **takes the place of** the plugin's copy. One server named
+`weeek` either way; after this it is yours:
 
-[mcp_servers.weeek.env]
-# Turns an unreachable registry into a one-second error instead of a 70-second hang.
-npm_config_fetch_retries = "0"
+```bash
+codex mcp add weeek --env WEEEK_FILE_ROOT=/Users/you/work/weeek-files \
+  --env npm_config_fetch_retries=0 -- npx -y @dsudomoin/weeek-mcp@0.2.0
 ```
 
-Codex fails the **whole config file** on one unrecognised key, taking every other MCP server with
-it, so copy the block rather than retyping it.
+`weeek-mcp init` prints that line with your directory already in it. Know what it costs: a
+registration of your own pins the version, so `codex plugin upgrade` will stop bringing you a new
+server — change the number here when you want one. And `npm_config_fetch_retries` is not
+decoration; without it an unreachable registry hangs the client for seventy seconds instead of
+failing in one.
 
 ### Installed once, run from disk
 
@@ -50,9 +56,9 @@ npm install -g @dsudomoin/weeek-mcp
 claude mcp add weeek --scope user -- weeek-mcp
 ```
 
-## The token
+## Setup
 
-Create one in Weeek under **Settings → API**, then give it to the server once, from your terminal:
+Create a token in Weeek under **Settings → API**, then run the wizard once, from your terminal:
 
 ```bash
 weeek-mcp init
@@ -60,12 +66,16 @@ weeek-mcp init
 
 It asks for the token without showing it, checks it against Weeek before storing anything, and puts
 it in your operating system's keychain — then tells you which store it used. Every client on the
-machine finds it there. If you installed nothing, `npx -y @dsudomoin/weeek-mcp init` runs the same
+machine finds it there. It then asks which directory the attachment tools may touch and writes that
+into the configuration of whichever clients on this machine launch the server; it never keeps it
+anywhere the server itself could read. Run it again whenever either should change — Enter keeps
+what is already there. If you installed nothing, `npx -y @dsudomoin/weeek-mcp init` runs the same
 wizard.
 
+Restart your client afterwards. Both values are read once, when the server starts.
+
 `WEEEK_API_TOKEN` in the environment always wins over the stored one, which is what makes
-containers and CI work. Claude Code can also hold the token itself, through
-`/plugin configure weeek@dsudomoin`.
+containers and CI work. Claude Code can also hold the token in the plugin's own settings.
 
 On Linux with no session D-Bus — a container, an SSH session, a headless box — there is no
 keychain to put it in, so the token goes to a file that only you can read. The wizard names that
@@ -113,7 +123,9 @@ Found by experiment, and each contradicts what you would reasonably assume.
 
 Two tools touch your disk, and the paths come from the model — which has just been reading task
 descriptions and comments that other people wrote. Text like that can carry instructions, so the
-boundary is yours to draw and neither tool can widen it:
+boundary is yours to draw and neither tool can widen it. `weeek-mcp init` asks for it; what it sets
+is `WEEEK_FILE_ROOT` in the environment your client launches the server with, and setting that
+yourself does the same thing:
 
 ```bash
 WEEEK_FILE_ROOT=/Users/you/work/weeek-files

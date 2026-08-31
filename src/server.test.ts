@@ -212,6 +212,54 @@ test("the environment beats a stored token, which is what keeps containers worki
   }
 });
 
+test("a directory named in a client's own settings is not a boundary the server will read", {
+  timeout: 30_000,
+}, async () => {
+  // The rule the whole file-root design rests on, stated as behaviour rather than as a comment.
+  // `weeek-mcp init` writes the directory into the client's configuration, and the client is meant
+  // to pass it on in the environment; the server must not go looking for it there itself. If it
+  // ever did, the boundary would be readable — and therefore arguable — by a model that spends its
+  // day reading comments other people wrote. So: a settings file that names a directory, an
+  // environment that does not, and a file tool that still refuses.
+  const { mkdtempSync, rmSync, mkdirSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+
+  const home = mkdtempSync(join(tmpdir(), "weeek-home-"));
+
+  try {
+    mkdirSync(join(home, ".claude"));
+    writeFileSync(
+      join(home, ".claude", "settings.json"),
+      JSON.stringify({
+        enabledPlugins: { "weeek@dsudomoin": true },
+        pluginConfigs: { "weeek@dsudomoin": { options: { file_root: home } } },
+      }),
+    );
+
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [SERVER],
+      env: { ...WITH_TOKEN, HOME: home, USERPROFILE: home },
+    });
+    const client = new Client({ name: "server-test", version: "1.0.0" });
+
+    try {
+      await client.connect(transport);
+      const result = await client.callTool({
+        name: "weeek_upload_attachment",
+        arguments: { taskId: 1, filePath: join(home, "anything.txt") },
+      });
+
+      assert.match(JSON.stringify(result.content), /WEEEK_FILE_ROOT is not set/);
+    } finally {
+      await client.close();
+    }
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test("weeek-mcp init refuses a stdin that is not a terminal, and writes nothing to stdout", async () => {
   // The refusal is what makes the slash command's instruction hold when it is ignored. Reading a
   // token from a pipe would put it wherever that pipe came from — a model's transcript, most

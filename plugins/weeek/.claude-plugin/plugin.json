@@ -1,7 +1,7 @@
 {
   "name": "weeek",
   "displayName": "Weeek",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Weeek task tracker for Claude Code: tasks, comments, attachments",
   "author": {
     "name": "d.sudomoin"
@@ -24,7 +24,7 @@
     "file_root": {
       "type": "string",
       "title": "Attachment directory",
-      "description": "Absolute path to the one directory the attachment tools may read from and write to. Leave this empty and both stay refused, which is the safe default: uploading reads any path the model names, and the model reads comments other people wrote. Pick a directory nothing is executed from.",
+      "description": "Absolute path to the one directory the attachment tools may read and write. Empty means both refuse every path, which is the safe default. `weeek-mcp init` sets it.",
       "required": false
     }
   }
