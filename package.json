@@ -37,6 +37,7 @@
   "scripts": {
     "build": "node scripts/bundle.mjs",
     "check": "tsc --noEmit -p tsconfig.check.json",
+    "pretest": "npm run build",
     "test": "node --test 'src/**/*.test.ts'",
     "update:openapi": "node scripts/update-openapi.mjs",
     "prepack": "npm run build"

@@ -47,6 +47,18 @@ const uploadAttachment: WeeekOperation = {
  * already aborted, with its "abort" event long since fired: subscribing to that would hang the run
  * rather than fail it, and node:test has no default per-test timeout. Rejecting with a distinct
  * error instead turns the reuse into a failed assertion, since it is not the timeout we expect.
+ *
+ * The timer is what makes this a stand-in for a request rather than merely a promise nobody
+ * settles. A real fetch in flight holds a socket and the socket holds the event loop open; this
+ * held nothing, so with a stubbed fetch and a stubbed sleep the client's own `AbortSignal.timeout`
+ * was the only pending work — and whether that keeps the loop alive is a Node implementation
+ * detail that changed in 24. Before it, the loop drained while the client was still waiting and
+ * node:test reported the test as abandoned. Holding a handle until the abort arrives states the
+ * requirement directly and stops the suite depending on which version refs that timer.
+ *
+ * It expires on its own as well as on abort. Both callers bound the wait with `{ timeout: 1000 }`,
+ * so five seconds cannot elapse inside a passing test — but a client that stopped aborting would
+ * otherwise leave a handle open for good and wedge the run after the failure it should report.
  */
 function hangUntilAborted(init: RequestInit | undefined): Promise<Response> {
   return new Promise((_resolve, reject) => {
@@ -56,7 +68,12 @@ function hangUntilAborted(init: RequestInit | undefined): Promise<Response> {
       reject(new Error("the client reused an AbortSignal that had already fired"));
       return;
     }
-    signal.addEventListener("abort", () => reject(signal.reason));
+
+    const inFlight = setTimeout(() => {}, 5_000);
+    signal.addEventListener("abort", () => {
+      clearTimeout(inFlight);
+      reject(signal.reason);
+    });
   });
 }
 

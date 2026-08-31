@@ -116,16 +116,20 @@ Found by experiment, and each contradicts what you would reasonably assume.
 
 ```bash
 npm install
-npm test        # runs straight from the TypeScript sources
+npm test        # builds, then runs straight from the TypeScript sources
 npm run check   # tsc --noEmit
 npm run build   # esbuild → dist/server.mjs, the file npm publishes
 ```
 
-The server runs on Node 22.18, but the tests need **Node 24 or newer** and CI uses it. Two of them
-depend on runtime behaviour that arrived in 24: `AbortSignal.timeout` did not hold the event loop
-open before it, which strands the client's timeout test, and 24.0.0 still printed the type-stripping
-warning that `src/server.test.ts` reads stderr for. On Node 22 the suite exits 1 with ten tests
-cancelled — a harness limit, not a defect in the server, which its stdio loop keeps alive anyway.
+`npm test` builds first, through a `pretest` script, and it has to: `dist/` is not committed, and
+two tests read what the build produces — one checks that the file `bin` points at exists, another
+that the committed `THIRD-PARTY-NOTICES.md` still matches what the current sources bundle. The
+build takes about 0.2 s against a 1.6 s run, so it costs nothing to always be right.
+
+CI runs the suite on Node 22.18 — the floor `engines` declares — on the latest Node 22, and on 24,
+which is what releases are published from. Node 23 is the one version in that declared range that
+will not work: type stripping stayed behind a flag until 23.6, so `node --test` cannot read a `.ts`
+file before then. The line has been end-of-life since 2025.
 
 `src/generated/weeek-openapi.ts` is a committed snapshot of Weeek's OpenAPI spec; refresh it with
 `npm run update:openapi`, which downloads and executes code from their docs site.
@@ -151,8 +155,8 @@ So, to release `0.3.0`:
 # Bump all six by hand first. `npm version` will not do it: it knows about package.json and
 # the lockfile and nothing else, and the four it misses are the ones users actually install from.
 npm install          # refreshes package-lock.json to match
-npm run build        # THIRD-PARTY-NOTICES.md is committed, and a test compares it to this
-npm test             # refuses if any of the six disagrees
+npm test             # builds, then refuses if any of the six disagrees
+git add THIRD-PARTY-NOTICES.md   # the build refreshes it, and it is published
 
 git commit -am "chore: release 0.3.0"
 git tag v0.3.0       # the tag must match package.json, and CI checks that before publishing
